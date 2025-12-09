@@ -2,7 +2,7 @@ import torch
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
 
-from src.task import Net, load_data
+from src.task import MLP, load_data
 from src.task import test as test_fn
 from src.task import train as train_fn
 
@@ -15,7 +15,7 @@ def get_client(num_partitions: int = 10, local_epochs: int = 2) -> ClientApp:
         """Train the model on local data."""
 
         # Load the model and initialize it with the received weights
-        model = Net()
+        model = MLP()
         model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model.to(device)
@@ -51,7 +51,7 @@ def get_client(num_partitions: int = 10, local_epochs: int = 2) -> ClientApp:
         """Evaluate the model on local data."""
 
         # Load the model and initialize it with the received weights
-        model = Net()
+        model = MLP()
         model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model.to(device)

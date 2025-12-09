@@ -1,10 +1,15 @@
 import torch
-from src.task import Net
+from src.task import MLP
 from flwr.serverapp import Grid, ServerApp
 from flwr.serverapp.strategy import FedAvg
 from flwr.app import ArrayRecord, ConfigRecord, Context
 
-def get_server(server_rounds: int = 3, fraction_train: float = 1.0, lr: float = 0.005) -> ServerApp:
+def get_server(
+        server_rounds: int = 3,
+        fraction_train: float = 1.0,
+        lr: float = 0.005,
+        sparsity_level: float = 0.0,
+) -> ServerApp:
     # Create ServerApp
     app = ServerApp()
 
@@ -18,7 +23,7 @@ def get_server(server_rounds: int = 3, fraction_train: float = 1.0, lr: float = 
         #lr: float = context.run_config["lr"]
 
         # Load global model
-        global_model = Net()
+        global_model = MLP()
         arrays = ArrayRecord(global_model.state_dict())
 
         # Initialize FedAvg strategy
