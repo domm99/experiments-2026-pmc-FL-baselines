@@ -5,7 +5,7 @@ from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Normalize, ToTensor
-
+from ProFed.partitioner import Environment, Region, download_dataset, split_train_validation, partition_to_subregions
 
 class Net(nn.Module):
     """Model (simple CNN adapted from 'PyTorch: A 60 Minute Blitz')"""
@@ -43,33 +43,21 @@ class MLP(nn.Module):
 
 fds = None  # Cache FederatedDataset
 
-pytorch_transforms = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-
-def apply_transforms(batch):
-    """Apply transforms to the partition from FederatedDataset."""
-    batch["img"] = [pytorch_transforms(img) for img in batch["img"]]
-    return batch
-
-
-def load_data(partition_id: int, num_partitions: int):
-    """Load partition CIFAR10 data."""
-    # Only initialize `FederatedDataset` once
+def load_data(
+        dataset_name: str,
+        number_subregions: int,
+        number_of_devices_per_subregion: int,
+        partitioning_method: str,
+        seed: int,
+):
     global fds
-    if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)
-        fds = FederatedDataset(
-            dataset="uoft-cs/cifar10",
-            partitioners={"train": partitioner},
-        )
-    partition = fds.load_partition(partition_id)
-    # Divide data on each node: 80% train, 20% test
-    partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
-    # Construct dataloaders
-    partition_train_test = partition_train_test.with_transform(apply_transforms)
-    trainloader = DataLoader(partition_train_test["train"], batch_size=32, shuffle=True)
-    testloader = DataLoader(partition_train_test["test"], batch_size=32)
-    return trainloader, testloader
+    fds = get_mapping(dataset_name, number_subregions, number_of_devices_per_subregion, partitioning_method, seed)
+
+def get_data(partition_id: int):
+    partition = fds[partition_id]
+    trainloader = DataLoader(partition[0], batch_size=32, shuffle=True)
+    valloader = DataLoader(partition[1], batch_size=32)
+    return trainloader, valloader
 
 
 def train(net, trainloader, epochs, lr, device):
@@ -108,3 +96,17 @@ def test(net, testloader, device):
     accuracy = correct / len(testloader.dataset)
     loss = loss / len(testloader)
     return loss, accuracy
+
+def get_mapping(dataset_name, number_subregions: int, number_of_devices_per_subregion: int, partitioning_method: str, seed: int):
+    train_data, _ = download_dataset(dataset_name)
+    train_data, validation_data = split_train_validation(train_data, 0.8)
+
+    environment = partition_to_subregions(train_data, validation_data, dataset_name, partitioning_method, number_subregions, seed)
+    mapping = {}
+    current_id = 0
+    for region_id in range(number_subregions):
+        mapping_devices_data = environment.from_subregion_to_devices(region_id, number_of_devices_per_subregion)
+        for device_index, data in mapping_devices_data.items():
+            mapping[current_id] = data
+            current_id += 1
+    return mapping

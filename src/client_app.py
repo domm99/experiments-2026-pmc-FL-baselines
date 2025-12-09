@@ -2,12 +2,12 @@ import torch
 from flwr.app import ArrayRecord, Context, Message, MetricRecord, RecordDict
 from flwr.clientapp import ClientApp
 
-from src.task import MLP, load_data
+from src.task import MLP, get_data
 from src.task import test as test_fn
 from src.task import train as train_fn
 
 
-def get_client(num_partitions: int = 10, local_epochs: int = 2) -> ClientApp:
+def get_client(local_epochs: int = 2) -> ClientApp:
     app = ClientApp()
 
     @app.train()
@@ -22,8 +22,7 @@ def get_client(num_partitions: int = 10, local_epochs: int = 2) -> ClientApp:
 
         # Load the data
         partition_id = context.node_config["partition-id"]
-       #num_partitions = context.node_config["num-partitions"]
-        trainloader, _ = load_data(partition_id, num_partitions)
+        trainloader, _ = get_data(partition_id)
 
         # Call the training function
         train_loss = train_fn(
@@ -59,7 +58,7 @@ def get_client(num_partitions: int = 10, local_epochs: int = 2) -> ClientApp:
         # Load the data
         partition_id = context.node_config["partition-id"]
         #num_partitions = context.node_config["num-partitions"]
-        _, valloader = load_data(partition_id, num_partitions)
+        _, valloader = get_data(partition_id)
 
         # Call the evaluation function
         eval_loss, eval_acc = test_fn(

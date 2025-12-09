@@ -9,10 +9,10 @@ packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
-torch = "^2.9.1"
-torchvision = "^0.24.1"
+torch = "2.7.1"
+torchvision = "0.22.1"
 flwr = {extras = ["simulation"], version = "^1.24.0"}
-flwr-datasets = "^0.5.0"
+profed = "^0.7.3"
 
 
 [build-system]
